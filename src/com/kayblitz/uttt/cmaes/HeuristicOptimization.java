@@ -6,17 +6,20 @@ import fr.inria.optimization.cmaes.CMAEvolutionStrategy;
 import fr.inria.optimization.cmaes.fitness.IObjectiveFunction;
 
 public class HeuristicOptimization {
+	private static final int GAMES_PER_SAMPLE = 300;
+	private static final int POPULATION_SIZE = 20;
+	private static final int NUM_GENERATIONS = 100;
+	
 	private static class FitnessFunction implements IObjectiveFunction {
 		@Override
 		public double valueOf(double[] x) {
-			int numSamples = 200;
 			UTTTStarter starter = new UTTTStarter(true);
 			starter.enableHalfAndHalfMode(true);
 			starter.seedBots(true, true);
 			starter.disableOutput(true);
 			starter.updateHeuristics(x); // update heuristics for bot using evaluation type 3
 			starter.setNumConcurrentGames(3);
-			starter.setNumGamesPerSample(numSamples);
+			starter.setNumGamesPerSample(GAMES_PER_SAMPLE);
 			starter.setSampleSize(1);
 			starter.setBots("java -cp D:\\Users\\Kenneth\\workspace\\UTTT_CMA-ES\\bin com.kayblitz.uttt.bot.MinimaxBot 3 3", 
 					"java -cp D:\\Users\\Kenneth\\workspace\\UTTT_CMA-ES\\bin com.kayblitz.uttt.bot.MinimaxBot 3 2");
@@ -30,7 +33,7 @@ public class HeuristicOptimization {
 			}
 			System.out.printf("P1 Wins/P2 Wins/Ties/Timeouts: %.1f/%.1f/%.1f/%.1f\n", starter.getAverageP1Wins(), starter.getAverageP2Wins(),
 					starter.getAverageTies(), starter.getAverageTimeouts());
-			return numSamples - (starter.getAverageP1Wins() + 0.5 * starter.getAverageTies());
+			return GAMES_PER_SAMPLE - (starter.getAverageP1Wins() + 0.5 * starter.getAverageTies());
 		}
 
 		@Override
@@ -48,8 +51,9 @@ public class HeuristicOptimization {
 		cma.setDimension(8); // overwrite some loaded properties
 		cma.setInitialX(0.5); // in each dimension, also setTypicalX can be used
 		cma.setInitialStandardDeviation(0.3); // also a mandatory setting
+		cma.parameters.setPopulationSize(POPULATION_SIZE);
 		cma.options.stopFitness = 0;       // optional setting
-		cma.options.stopMaxFunEvals = 5000;
+		cma.options.stopMaxFunEvals = GAMES_PER_SAMPLE * POPULATION_SIZE * NUM_GENERATIONS;
 
 		// initialize cma and get fitness array to fill in later
 		double[] fitness = cma.init();  // new double[cma.parameters.getPopulationSize()];
