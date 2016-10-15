@@ -8,7 +8,7 @@ import fr.inria.optimization.cmaes.fitness.IObjectiveFunction;
 public class HeuristicOptimization {
 	private static final int GAMES_PER_SAMPLE = 300;
 	private static final int POPULATION_SIZE = 20;
-	private static final int NUM_GENERATIONS = 100;
+	private static final int NUM_GENERATIONS = 500;
 	
 	private static class FitnessFunction implements IObjectiveFunction {
 		@Override
@@ -18,11 +18,11 @@ public class HeuristicOptimization {
 			starter.seedBots(true, true);
 			starter.disableOutput(true);
 			starter.updateHeuristics(x); // update heuristics for bot using evaluation type 3
-			starter.setNumConcurrentGames(3);
+			starter.setNumConcurrentGames(2);
 			starter.setNumGamesPerSample(GAMES_PER_SAMPLE);
 			starter.setSampleSize(1);
-			starter.setBots("java -cp D:\\Users\\Kenneth\\workspace\\UTTT_CMA-ES\\bin com.kayblitz.uttt.bot.MinimaxBot 3 3", 
-					"java -cp D:\\Users\\Kenneth\\workspace\\UTTT_CMA-ES\\bin com.kayblitz.uttt.bot.MinimaxBot 3 2");
+			starter.setBots("java -cp D:\\Users\\Kenneth\\workspace\\UTTT_CMA-ES\\bin com.kayblitz.uttt.bot.IterativeDeepeningMinimaxBot 3", 
+					"java -cp D:\\Users\\Kenneth\\workspace\\UTTT_CMA-ES\\bin com.kayblitz.uttt.bot.IterativeDeepeningMinimaxBot 2");
 			starter.start();
 			while (!starter.isFinished()) {
 				try {
@@ -49,11 +49,21 @@ public class HeuristicOptimization {
 		CMAEvolutionStrategy cma = new CMAEvolutionStrategy();
 		//cma.readProperties(); // read options, see file CMAEvolutionStrategy.properties
 		cma.setDimension(8); // overwrite some loaded properties
-		cma.setInitialX(0.5); // in each dimension, also setTypicalX can be used
-		cma.setInitialStandardDeviation(0.3); // also a mandatory setting
+		// set best point from depth 5
+		cma.setInitialX(new double[] {
+				1.481980523838704, 
+				1.140677320506129, 
+				1.4066889502905648, 
+				0.9989940865792346, 
+				0.1993119083419216, 
+				-0.8167288928897225, 
+				0.05977267391700242, 
+				0.4042137326923306});
+		//cma.setInitialX(0.5); // in each dimension, also setTypicalX can be used
+		cma.setInitialStandardDeviation(0.01); // also a mandatory setting
 		cma.parameters.setPopulationSize(POPULATION_SIZE);
 		cma.options.stopFitness = 0;       // optional setting
-		cma.options.stopMaxFunEvals = GAMES_PER_SAMPLE * POPULATION_SIZE * NUM_GENERATIONS;
+		cma.options.stopMaxFunEvals = POPULATION_SIZE * NUM_GENERATIONS;
 
 		// initialize cma and get fitness array to fill in later
 		double[] fitness = cma.init();  // new double[cma.parameters.getPopulationSize()];
