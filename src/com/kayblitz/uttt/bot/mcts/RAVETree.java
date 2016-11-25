@@ -7,13 +7,13 @@ import com.kayblitz.uttt.Move;
 
 public class RAVETree extends MCTree {
 	
-	private RAVENode root;
-	public static double EXPLORATION_CONSTANT = Math.sqrt(2);
+	protected RAVENode root;
+	public static double EXPLORATION_CONSTANT = 0.5;
 	public static double RAVE_CONSTANT = 0.1;
 	
-	public RAVETree(Field field, StringBuilder sb, int simulationType, int botId, int opponentId) {
-		super(field, sb, simulationType, botId, opponentId);
-		root = new RAVENode(-1, -1, botId, -1, null);
+	public RAVETree(Field field, StringBuilder sb, int treeType, int simulationType, int botId, int opponentId) {
+		super(field, sb, treeType, simulationType, botId, opponentId);
+		root = new RAVENode(-1, -1, botId, -1, null, field.getNumAvailableMoves());
 		root.saveState(field);
 	}
 	
@@ -26,8 +26,8 @@ public class RAVETree extends MCTree {
 		// Simulation
 		// Even if the node is terminal we still simulate it because every iteration afterwards
 		// will select the same terminal node if we do not simulate, resulting in an infinite loop
-		ArrayList<Move> botMoves = new ArrayList<Move>();
-		ArrayList<Move> opponentMoves = new ArrayList<Move>();
+		ArrayList<Move> botMoves = new ArrayList<Move>(35);
+		ArrayList<Move> opponentMoves = new ArrayList<Move>(35);
 		double result = simulate(expanded, botMoves, opponentMoves);
 		// Backpropagation
 		backpropagate(expanded, result, botMoves, opponentMoves);
@@ -37,28 +37,25 @@ public class RAVETree extends MCTree {
 	 * cn is child visits, c is the exploration constant, and pn is parent visits. Returned node may 
 	 * be a terminal state.
 	 */
-	private RAVENode select() {
+	protected RAVENode select() {
 		RAVENode selected = root;
 		while (true) {
 			if (selected.isTerminal())
 				return selected; // check to see if we have reached a finished state
 			
-			selected.restoreState(field);
-			ArrayList<Move> moves = field.getAvailableMoves();
-			if (selected.children.size() == moves.size()) {
-				// If the next bot's move has a chance to win game, select that move since that bot WILL
-				// ALWAYS choose that winning moving instead of selecting any other move
-				for (RAVENode child : selected.children) {
-					if (child.winner == selected.nextMoveBotId)
-						return child;
-				}
-				
+			if (selected.children.size() == selected.numChildren) {
 				// children all explored at least once, explore deeper using UCT-RAVE
 				RAVENode selectedChild = null;
 				double bestValue = Integer.MIN_VALUE;
 				double constant = Math.log(selected.n);
-				// select the child with the highest UCT value
+				
 				for (RAVENode child : selected.children) {
+					// If the next bot's move has a chance to win game, select that move since that bot WILL
+					// ALWAYS choose that winning moving instead of selecting any other move
+					if (child.winner == selected.nextMoveBotId)
+						return child;
+					
+					// select the child with the highest UCT value
 					double value = (1 - child.beta) * child.getAverageReward() + 
 							child.beta * child.getAverageAMAFReward() + 
 							EXPLORATION_CONSTANT * Math.sqrt(constant/child.n);
@@ -81,30 +78,13 @@ public class RAVETree extends MCTree {
 	 * Adds an unexplored child from the selected node and returns the child. The state of the Field will 
 	 * be that of the newly created child. The passed in node must not be terminal.
 	 */
-	private RAVENode expand(RAVENode selected) {
-		if (selected.isTerminal()) throw new RuntimeException("MCTS expand: node is terminal");
+	protected RAVENode expand(RAVENode selected) {
 		selected.restoreState(field); // restore state of node
-		ArrayList<Move> moves = field.getAvailableMoves();
-		
-		Move action = null;
-		int index = rand.nextInt(moves.size()); // initial index at random
-		// increment until unexplored child found, this guarantees that a child will be found 
-		// in O(n) time rather than just continuously iterating while selecting a child at random
-		// which may continue indefinitely
-		while (true) {
-			action = moves.get(index);
-			boolean unique = true;
-			for (RAVENode child : selected.children) {
-				if (action.column == child.a.column && action.row == child.a.row) {
-					unique = false;
-					break;
-				}
-			}
-			if (unique) break;
-			if (++index == moves.size()) index = 0; // wrap to beginning
-		}
-		field.makeMove(action, selected.nextMoveBotId, false); 
-		RAVENode child = new RAVENode(action, selected.nextMoveBotId == 1 ? 2 : 1, field.getWinner(), selected);
+		// get next unexplored move
+		Move move = field.getAvailableMoves().get(selected.children.size());
+		field.makeMove(move, selected.nextMoveBotId, false); 
+		RAVENode child = new RAVENode(move, selected.nextMoveBotId == 1 ? 2 : 1, field.getWinner(), 
+				selected, field.getNumAvailableMoves());
 		child.saveState(field);
 		selected.children.add(child); // add to parent's array of children
 		
@@ -114,23 +94,26 @@ public class RAVETree extends MCTree {
 	/** 
 	 * Simulates a play from the Node to an end state and returns a value, WIN(1), TIE(0.5), LOSS(0).
 	 */
-	private double simulate(RAVENode expanded, ArrayList<Move> botMoves, ArrayList<Move> opponentMoves) {
+	protected double simulate(RAVENode expanded, ArrayList<Move> botMoves, ArrayList<Move> opponentMoves) {
 		switch (simulationType) {
 		case Simulation.WIN_FIRST_RANDOM_RAVE:
 			return Simulation.simulateWinFirstRandomRAVE(field, expanded, botMoves, opponentMoves, botId, opponentId);
+		case Simulation.RANDOM_EPT_RAVE:
+			return Simulation.simulateRandomEPTRAVE(field, expanded, botMoves, opponentMoves, botId, opponentId);
 		default:
 			throw new RuntimeException("Invalid RAVE simulation type");
 		}
 	}
 	
 	/** Updates visited nodes: nodes from the expanded node to the root node */
-	private void backpropagate(RAVENode expanded, double result, ArrayList<Move> botMoves, ArrayList<Move> opponentMoves) {
+	protected void backpropagate(RAVENode expanded, double result, ArrayList<Move> botMoves, ArrayList<Move> opponentMoves) {
 		while (expanded != null) {
 			// standard UCT update
-			expanded.update(result, botId, opponentId);
+			expanded.updateUCT(result, botId, opponentId);
 			// AMAF update
 			// update playout node
 			expanded.updateAMAF(result, botId, opponentId);
+			updateBeta(expanded);
 			// update siblings
 			if (expanded.parent != null) {
 				for (RAVENode sibling : expanded.parent.children) {
@@ -157,13 +140,12 @@ public class RAVETree extends MCTree {
 					}
 				}
 			}
-			updateBeta(expanded);
 			expanded = expanded.parent;
 		}
 	}
 	
 	/** Updates beta according to mimimum MSE schedule **/
-	private void updateBeta(RAVENode node) {
+	protected void updateBeta(RAVENode node) {
 		node.beta = node.amafN / (node.n + node.amafN + RAVE_CONSTANT * node.n * node.amafN);
 	}
 	
@@ -173,10 +155,7 @@ public class RAVETree extends MCTree {
 	 * reward as the most visited node is the more promising one.
 	 */
 	@Override
-	public Move getBestMove() {
-		if (root.children.size() == 0)
-			throw new RuntimeException("MCTS: root node has no children!");
-		
+	public Move getBestMove() {		
 		RAVENode maxRobustChild = null;
 		double maxRobustQ = Integer.MIN_VALUE;
 		double maxRobustN = Integer.MIN_VALUE;
@@ -221,5 +200,9 @@ public class RAVETree extends MCTree {
 			sb.append(String.format("Robust child returned %d, %d\n", robustChild.a.column, robustChild.a.row));
 			return robustChild.a;
 		}
+	}
+
+	@Override
+	public void log() {
 	}
 }

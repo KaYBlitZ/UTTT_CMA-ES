@@ -17,6 +17,7 @@ public class HeuristicOptimization {
 			starter.enableHalfAndHalfMode(true);
 			starter.seedBots(true, true);
 			starter.disableOutput(true);
+			starter.disableTimebank(true);
 			starter.updateHeuristics(x); // update heuristics for bot using evaluation type 3
 			starter.setNumConcurrentGames(2);
 			starter.setNumGamesPerSample(GAMES_PER_SAMPLE);
@@ -26,7 +27,7 @@ public class HeuristicOptimization {
 			starter.start();
 			while (!starter.isFinished()) {
 				try {
-					Thread.sleep(5000);
+					Thread.sleep(1000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}

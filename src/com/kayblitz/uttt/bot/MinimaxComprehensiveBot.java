@@ -8,7 +8,7 @@ import com.kayblitz.uttt.BotParser;
 import com.kayblitz.uttt.Field;
 import com.kayblitz.uttt.Move;
 
-public class MinimaxBot extends Bot {
+public class MinimaxComprehensiveBot extends Bot {
 
 	public static void main(String[] args) {
 		if (args.length < 2) {
@@ -26,13 +26,13 @@ public class MinimaxBot extends Bot {
 			System.err.println("Invalid depth or evaluation type");
 			return;
 		}
-		new BotParser(new MinimaxBot(depth, type, seed)).run();
+		new BotParser(new MinimaxComprehensiveBot(depth, type, seed)).run();
 	}
 	
 	private int depth, type;
 	private Random rand;
 	
-	public MinimaxBot(int depth, int type, int seed) {
+	public MinimaxComprehensiveBot(int depth, int type, int seed) {
 		this.depth = depth;
 		this.type = type;
 		rand = new Random(seed);
@@ -41,8 +41,6 @@ public class MinimaxBot extends Bot {
 	@Override
 	public Move makeMove(int timebank) {		
 		System.err.println("Timebank: " + timebank);
-		if (field.getMoveNum() == 1)
-			return new Move(4, 4); // best first move
 		double bestHeuristic = Integer.MIN_VALUE;
 		Move bestMove = null;
 		

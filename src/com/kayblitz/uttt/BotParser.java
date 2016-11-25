@@ -20,7 +20,6 @@ package com.kayblitz.uttt;
 import java.util.Scanner;
 
 import com.kayblitz.uttt.bot.Evaluation;
-import com.kayblitz.uttt.bot.mcts.RAVETree;
 
 /**
  * BotParser class
@@ -32,10 +31,8 @@ import com.kayblitz.uttt.bot.mcts.RAVETree;
  */
 
 public class BotParser {
-
 	private final Scanner scanner;
 	private final Bot bot;
-	private Field field;
 
 	public BotParser(Bot bot) {
 		this.scanner = new Scanner(System.in);
@@ -43,38 +40,45 @@ public class BotParser {
 	}
 
 	public void run() {
-		field = new Field();
 		while (scanner.hasNextLine()) {
 			String line = scanner.nextLine();
 			if (line.length() == 0)
 				continue;
 			
 			String[] parts = line.split(" ");
-			if(parts[0].equals("settings")) {
-				if (parts[1].equals("your_botid")) {
-					int botId = Integer.parseInt(parts[2]);
-					bot.botId = botId;
-					bot.opponentId = botId == 1 ? 2 : 1;
+			if (parts[0].equals("update")) { /* new game data */
+				if (parts[1].equals("game")) {
+					bot.field.parseGameData(parts[2], parts[3]);
+				} else if (parts[1].equals("heuristics")) {
+					Evaluation.MACRO_TWO_IN_A_ROW_COMP = Double.parseDouble(parts[2]);
+					Evaluation.MACRO_MIDDLE_COMP = Double.parseDouble(parts[3]);
+					Evaluation.MACRO_CORNER_COMP = Double.parseDouble(parts[4]);
+					Evaluation.MACRO_SIDE_COMP = Double.parseDouble(parts[5]);
+					
+					Evaluation.MICRO_TWO_IN_A_ROW_COMP = Double.parseDouble(parts[6]);
+					
+					Evaluation.MICRO_MIDDLE_MIDDLE_COMP = Double.parseDouble(parts[7]);
+					Evaluation.MICRO_MIDDLE_CORNER_COMP = Double.parseDouble(parts[8]);
+					Evaluation.MICRO_MIDDLE_SIDE_COMP = Double.parseDouble(parts[9]);
+					
+					Evaluation.MICRO_CORNER_MIDDLE_COMP = Double.parseDouble(parts[10]);
+					Evaluation.MICRO_CORNER_CORNER_COMP = Double.parseDouble(parts[11]);
+					Evaluation.MICRO_CORNER_SIDE_COMP = Double.parseDouble(parts[12]);
+					
+					Evaluation.MICRO_SIDE_MIDDLE_COMP = Double.parseDouble(parts[13]);
+					Evaluation.MICRO_SIDE_CORNER_COMP = Double.parseDouble(parts[14]);
+					Evaluation.MICRO_SIDE_SIDE_COMP = Double.parseDouble(parts[15]);
 				}
-			} else if (parts[0].equals("update") && parts[1].equals("heuristics")) {
-				Evaluation.TWO_IN_A_ROW_OPTIMIZED = Double.valueOf(parts[2]);
-				Evaluation.MIDDLE_OPTIMIZED = Double.valueOf(parts[3]);
-				Evaluation.CORNER_OPTIMIZED = Double.valueOf(parts[4]);
-				Evaluation.SIDE_OPTIMIZED = Double.valueOf(parts[5]);
-				Evaluation.MINI_TWO_IN_A_ROW_OPTIMIZED = Double.valueOf(parts[6]);
-				Evaluation.MINI_MIDDLE_OPTIMIZED = Double.valueOf(parts[7]);
-				Evaluation.MINI_CORNER_OPTIMIZED = Double.valueOf(parts[8]);
-				Evaluation.MINI_SIDE_OPTIMIZED = Double.valueOf(parts[9]);
-			} else if (parts[0].equals("update") && parts[1].equals("rave")) {
-				RAVETree.EXPLORATION_CONSTANT = Double.valueOf(parts[2]);
-				RAVETree.RAVE_CONSTANT = Double.valueOf(parts[3]);
-			} else if(parts[0].equals("update") && parts[1].equals("game")) { /* new game data */
-			    field.parseGameData(parts[2], parts[3]);
-			} else if(parts[0].equals("action")) {
+			} else if (parts[0].equals("action")) {
 				if (parts[1].equals("move")) { /* move requested */
 					int timebank = Integer.parseInt(parts[2]);
-					Move move = bot.makeMove(field, timebank, field.getMoveNum());
+					Move move = bot.makeMove(timebank);
 					System.out.println("place_move " + move.column + " " + move.row);
+				}
+			} else if (parts[0].equals("settings")) {
+				if (parts[1].equals("your_botid")) {
+					bot.botId = Integer.parseInt(parts[2]);
+					bot.opponentId = bot.botId == 1 ? 2 : 1;
 				}
 			} else { 
 				System.out.println("Unknown command: " + line);

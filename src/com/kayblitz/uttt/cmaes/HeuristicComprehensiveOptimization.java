@@ -5,21 +5,25 @@ import com.theaigames.uttt.UTTTStarter;
 import fr.inria.optimization.cmaes.CMAEvolutionStrategy;
 import fr.inria.optimization.cmaes.fitness.IObjectiveFunction;
 
-public class RAVEOptimization {
+public class HeuristicComprehensiveOptimization {
+	private static final int GAMES_PER_SAMPLE = 300;
+	private static final int POPULATION_SIZE = 20;
+	private static final int NUM_GENERATIONS = 1000;
+	
 	private static class FitnessFunction implements IObjectiveFunction {
 		@Override
 		public double valueOf(double[] x) {
-			int numSamples = 200;
 			UTTTStarter starter = new UTTTStarter(true);
 			starter.enableHalfAndHalfMode(true);
+			starter.seedBots(true, true);
 			starter.disableOutput(true);
 			starter.disableTimebank(true);
-			starter.updateRAVEConstants(x[0], x[1]);
+			starter.updateHeuristics(x); // update heuristics for bot using evaluation type 4
 			starter.setNumConcurrentGames(3);
-			starter.setNumGamesPerSample(numSamples);
+			starter.setNumGamesPerSample(GAMES_PER_SAMPLE);
 			starter.setSampleSize(1);
-			starter.setBots("java -cp D:\\Users\\Kenneth\\workspace\\UTTT_CMA-ES\\bin com.kayblitz.uttt.bot.mcts.MCTSBot 1 2", 
-					"java -cp D:\\Users\\Kenneth\\workspace\\UTTT_CMA-ES\\bin com.kayblitz.uttt.bot.MinimaxBot 7 2");
+			starter.setBots("java -cp D:\\Users\\Kenneth\\workspace\\UTTT_CMA-ES\\bin com.kayblitz.uttt.bot.MinimaxComprehensiveBot 7 4", 
+					"java -cp D:\\Users\\Kenneth\\workspace\\UTTT_CMA-ES\\bin com.kayblitz.uttt.bot.MinimaxBot 7 3");
 			starter.start();
 			while (!starter.isFinished()) {
 				try {
@@ -30,7 +34,7 @@ public class RAVEOptimization {
 			}
 			System.out.printf("P1 Wins/P2 Wins/Ties/Timeouts: %.1f/%.1f/%.1f/%.1f\n", starter.getAverageP1Wins(), starter.getAverageP2Wins(),
 					starter.getAverageTies(), starter.getAverageTimeouts());
-			return numSamples - (starter.getAverageP1Wins() + 0.5 * starter.getAverageTies());
+			return GAMES_PER_SAMPLE - (starter.getAverageP1Wins() + 0.5 * starter.getAverageTies());
 		}
 
 		@Override
@@ -45,11 +49,12 @@ public class RAVEOptimization {
 		// new a CMA-ES and set some initial values
 		CMAEvolutionStrategy cma = new CMAEvolutionStrategy();
 		//cma.readProperties(); // read options, see file CMAEvolutionStrategy.properties
-		cma.setDimension(2); // overwrite some loaded properties
-		cma.setInitialX(0.5); // in each dimension, also setTypicalX can be used
-		cma.setInitialStandardDeviation(0.3); // also a mandatory setting
+		cma.setDimension(14); // overwrite some loaded properties
+		cma.setInitialX(0); // in each dimension, also setTypicalX can be used
+		cma.setInitialStandardDeviation(0.5); // also a mandatory setting
+		cma.parameters.setPopulationSize(POPULATION_SIZE);
 		cma.options.stopFitness = 0;       // optional setting
-		cma.options.stopMaxFunEvals = 5000;
+		cma.options.stopMaxFunEvals = POPULATION_SIZE * NUM_GENERATIONS;
 
 		// initialize cma and get fitness array to fill in later
 		double[] fitness = cma.init();  // new double[cma.parameters.getPopulationSize()];
@@ -59,7 +64,6 @@ public class RAVEOptimization {
 
 		// iteration loop
 		while(cma.stopConditions.getNumber() == 0) {
-
             // --- core iteration step ---
 			double[][] pop = cma.samplePopulation(); // get a new population of solutions
 			for(int i = 0; i < pop.length; ++i) {    // for each candidate solution i
